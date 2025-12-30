@@ -1,0 +1,8 @@
+.vscode
+build
+devel
+./logs
+install
+.catkin_workspace
+.catkin_tools
+src/CMakeLists.txt
