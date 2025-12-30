@@ -47,6 +47,20 @@ roslaunch super_lio Livox_mid360.launch
 
 ```
 
+#### 🔁 Relocalization Mode
+Super-LIO supports relocalization using a pre-built map, allowing the system to resume localization from a saved map without restarting the mapping process.
+This mode is useful for long-term deployment, repeated missions, or recovery after tracking loss.
+
+Before running relocalization, please make sure that:
+- A map has been previously saved to disk.
+
+```bash
+cd PATH_2_Super-LIO
+source devel/setup.bash 
+roslaunch super_lio relocation.launch
+```
+
+
 ## Datasets
 <p align="center">
   <img src="docs/datasets_compressed.png" width="95%">
