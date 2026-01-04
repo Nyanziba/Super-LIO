@@ -75,7 +75,6 @@ void LoadParamFromRos(ros::NodeHandle& nh){
   nh.getParam("/lio/hash_map/hash_capacity", hash_capacity);
   g_ivox_capacity = hash_capacity;
   nh.getParam("/lio/hash_map/vox_resolution", g_ivox_resolution);
-  nh.getParam("/lio/hash_map/insert_resolution", g_insert_resolution);
   
   // kf
   nh.getParam("/lio/kf/kf_type", g_kf_type);

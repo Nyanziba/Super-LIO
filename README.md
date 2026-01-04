@@ -20,6 +20,11 @@
       <img src="https://img.shields.io/badge/🔄 SWITCH - ROS2 Humble/Iron/Jazzy-3b82f6?style=for-the-badge&logo=ros&logoColor=white&logoWidth=22" alt="Switch to ROS2"
       onmouseover="this.src='https://img.shields.io/badge/🔄 SWITCH - ROS2 Humble/Iron/Jazzy-1e40af?style=for-the-badge&logo=ros&logoColor=white&logoWidth=22'"
       onmouseout="this.src='https://img.shields.io/badge/🔄 SWITCH - ROS2 Humble/Iron/Jazzy-3b82f6?style=for-the-badge&logo=ros&logoColor=white&logoWidth=22'"/>
+    </a>&nbsp;&nbsp;
+    <a href="#" style="text-decoration: none; cursor: default;">
+      <img src="https://img.shields.io/badge/🖥️ PLATFORM - X86 + ARM64-8b5cf6?style=for-the-badge&logo=linux&logoColor=white&logoWidth=22" alt="X86 and ARM Support"
+      onmouseover="this.src='https://img.shields.io/badge/🖥️ PLATFORM - X86_64 + ARM64-4f46e5?style=for-the-badge&logo=linux&logoColor=white&logoWidth=22'"
+      onmouseout="this.src='https://img.shields.io/badge/🖥️ PLATFORM - X86_64 + ARM64-8b5cf6?style=for-the-badge&logo=linux&logoColor=white&logoWidth=22'"/>
     </a>
   </p>
 </div>
@@ -30,6 +35,7 @@
   <img src="docs/system_overview.png" width="95%">
 </p>
 
+**Key Features:  Efficient · Robust · Cross-Platform Compatible · Supports Both ROS1/ROS2 Versions**
 
 Super-LIO is a robust and efficient LiDAR–Inertial Odometry (LIO) system designed for real-time and large-scale autonomous navigation. It introduces a compact and structured mapping strategy that enables predictable correspondence search and stable state estimation. The system is validated through extensive real-world experiments and comparisons with state-of-the-art methods, which demonstrates that Super-LIO not only achieves **excellent accuracy** but also maintains **lower resource consumption** and realizes a nearly **1.2–4× higher real-time processing speed**⚡.
 
@@ -41,7 +47,7 @@ Super-LIO is a robust and efficient LiDAR–Inertial Odometry (LIO) system desig
 
 ### Requirements
 
-Ubuntu 20.04 · ROS Noetic · Eigen · PCL
+Ubuntu 20.04 · C++17 · ROS Noetic · Eigen · PCL 
 
 ### Dependencies
 

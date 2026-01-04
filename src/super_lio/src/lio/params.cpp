@@ -45,7 +45,6 @@ namespace LI2Sup{
   /// hash_map
   std::size_t g_ivox_capacity = 100000;
   float       g_ivox_resolution = 0.5;
-  float       g_insert_resolution = 0.5;
 
   /// kf
   int g_kf_type = 1;                // 1: ESKF, 2: InESKF

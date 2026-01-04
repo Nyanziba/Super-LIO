@@ -39,7 +39,7 @@ lio:
   # Vox hash Map
   hash_map:
     hash_capacity: 100000000
-    vox_resolution: 0.6
+    vox_resolution: 0.5
 
   # Kalman Filter Parameters
   kf:
