@@ -45,6 +45,8 @@ Super-LIO is a robust and efficient LiDAR–Inertial Odometry (LIO) system desig
 
 ## Quickly Run
 
+**For ROS2 Users**: Please switch to the ros2 branch and follow the instructions at [ros2 branch](https://github.com/Liansheng-Wang/Super-LIO/tree/ros2)
+
 ### Requirements
 
 Ubuntu 20.04 · C++17 · ROS Noetic · Eigen · PCL 
