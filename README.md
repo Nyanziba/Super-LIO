@@ -4,10 +4,25 @@
   <p><strong>This work has been accepted to <i> IEEE Robotics and Automation Letters (RA-L 2025)</i>.</strong></p>
   <br>
 
-  [![Code](https://img.shields.io/badge/Code-GitHub-blue?logo=github)](https://github.com/Liansheng-Wang/Super-LIO.git)[![arXiv](https://img.shields.io/badge/arXiv-2509.05723-b31b1b.svg)](https://arxiv.org/abs/2509.05723)[![Bilibili](https://img.shields.io/badge/Bilibili-00A1D6?logo=bilibili&logoColor=white)](https://www.bilibili.com/video/BV11wBeBYEp6)[![YouTube](https://img.shields.io/badge/YouTube-FF0000?logo=youtube&logoColor=white)](https://youtu.be/m9-hl8s5DDw) 
+  [![Code](https://img.shields.io/badge/Code-GitHub-181717?style=flat-square&logo=github&logoWidth=16)](https://github.com/Liansheng-Wang/Super-LIO.git) [![arXiv](https://img.shields.io/badge/arXiv-2509.05723-b31b1b?style=flat-square&logo=arXiv&logoWidth=16)](https://arxiv.org/abs/2509.05723) [![Bilibili](https://img.shields.io/badge/Bilibili-00A1D6?style=flat-square&logo=bilibili&logoColor=white&logoWidth=16)](https://www.bilibili.com/video/BV11wBeBYEp6) [![YouTube](https://img.shields.io/badge/YouTube-FF0000?style=flat-square&logo=youtube&logoColor=white&logoWidth=16)](https://youtu.be/m9-hl8s5DDw)
   <!-- [![IEEE](https://img.shields.io/badge/Paper-RAL2025-004088.svg)](https://ieeexplore.ieee.org/document/xxxx) -->
 </div>
 
+
+<div align="center">
+  <p>
+    <a href="https://github.com/Liansheng-Wang/Super-LIO/tree/ros1" style="text-decoration: none;">
+      <img src="https://img.shields.io/badge/✅ ACTIVE - ROS1 Noetic-22c55e?style=for-the-badge&logo=ros&logoColor=white&logoWidth=22" alt="ROS1 Active"
+      onmouseover="this.src='https://img.shields.io/badge/✅ ACTIVE - ROS1 Noetic-166534?style=for-the-badge&logo=ros&logoColor=white&logoWidth=22'"
+      onmouseout="this.src='https://img.shields.io/badge/✅ ACTIVE - ROS1 Noetic-22c55e?style=for-the-badge&logo=ros&logoColor=white&logoWidth=22'"/>
+    </a>&nbsp;&nbsp;
+    <a href="https://github.com/Liansheng-Wang/Super-LIO/tree/ros2" style="text-decoration: none;">
+      <img src="https://img.shields.io/badge/🔄 SWITCH - ROS2 Humble/Iron/Jazzy-3b82f6?style=for-the-badge&logo=ros&logoColor=white&logoWidth=22" alt="Switch to ROS2"
+      onmouseover="this.src='https://img.shields.io/badge/🔄 SWITCH - ROS2 Humble/Iron/Jazzy-1e40af?style=for-the-badge&logo=ros&logoColor=white&logoWidth=22'"
+      onmouseout="this.src='https://img.shields.io/badge/🔄 SWITCH - ROS2 Humble/Iron/Jazzy-3b82f6?style=for-the-badge&logo=ros&logoColor=white&logoWidth=22'"/>
+    </a>
+  </p>
+</div>
 
 ## Overview
 
@@ -16,7 +31,7 @@
 </p>
 
 
-Super-LIO is a robust and efficient LiDAR–Inertial Odometry (LIO) system designed for real-time and large-scale autonomous navigation. It introduces a compact and structured mapping strategy that enables predictable correspondence search and stable state estimation. The system is validated through extensive real-world experiments and comparisons with state-of-the-art methods.
+Super-LIO is a robust and efficient LiDAR–Inertial Odometry (LIO) system designed for real-time and large-scale autonomous navigation. It introduces a compact and structured mapping strategy that enables predictable correspondence search and stable state estimation. The system is validated through extensive real-world experiments and comparisons with state-of-the-art methods, which demonstrates that Super-LIO not only achieves **excellent accuracy** but also maintains **lower resource consumption** and realizes a nearly **1.2–4× higher real-time processing speed**⚡.
 
 
 **Contributors**: [Liansheng Wang](https://github.com/Liansheng-Wang), [Xinke Zhang](https://github.com/PSQzzzxk), [Chenhui Li](https://github.com/kermitLHH), [Dongjiao He](https://github.com/Joanna-HE), [Yihan pan](https://github.com/pyh3552), Jianjun Yi.
@@ -30,10 +45,10 @@ Ubuntu 20.04 · ROS Noetic · Eigen · PCL
 
 ### Dependencies
 
-glog · TBB · ros-noetic-jsk-rviz-plugins
+glog · TBB
 
 ```bash
-sudo apt install libgoogle-glog-dev libtbb-dev ros-noetic-jsk-rviz-plugins
+sudo apt install libgoogle-glog-dev libtbb-dev
 ```
 
 ### Build & Run
@@ -89,3 +104,15 @@ We kindly recommend to cite [our paper](https://arxiv.org/abs/2509.05723) if you
 ```
 
 
+## Update Logs
+
+<details>
+<summary>Click to expand <b>Update Logs</b> (click to collapse)</summary>
+
+<br>
+
+- 2026-01-04  
+  - Separate ROS interface and algorithm.
+  - Refactor SuperLIOReLoc to inherit from SuperLIO.
+  - Code style aligned with ROS2 version.
+</details>
