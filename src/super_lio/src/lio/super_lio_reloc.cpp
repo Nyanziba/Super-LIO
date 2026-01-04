@@ -134,14 +134,13 @@ bool SuperLIOReLoc::map_init(){
 }
 
 
-
 bool SuperLIOReLoc::kf_init(){
   const int need_init_frames = 10;
   static int imu_cout = 0;
   static int init_frame_count = 0;
   static V3 mean_gyro = V3::Zero();
   static V3 mean_acce = V3::Zero();
-  
+
   /// get init guess from ROS topic.
   if(flg_get_init_guess_){
     imu_cout = 0;
@@ -199,6 +198,7 @@ bool SuperLIOReLoc::kf_init(){
   M4 init_guess_T = M4::Identity();
   init_guess_T.block<3, 3>(0, 0) = init_guess_R_;
   init_guess_T.block<3, 1>(0, 3) = init_guess_t_;
+
 
   pcl::PointCloud<pcl::PointXYZI>::Ptr tmp_src(new pcl::PointCloud<pcl::PointXYZI>());
   pcl::transformPointCloud(*init_obs_data_, *tmp_src, g_lidar_imu.matrix().cast<float>());
@@ -274,15 +274,13 @@ bool SuperLIOReLoc::kf_init(){
 
 
 void SuperLIOReLoc::UpdateMap() {
-  if(!g_update_map) return;
-
-  static int __update_delay = 100;
-  if(__update_delay > 0){
-    __update_delay--;
-    std::cout << "\rUpdate map Delay: "
-            << 100 - __update_delay
-            << " %" << std::flush;
-    return;
+  if(g_update_map){
+    static int __update_delay = 100;
+    if(__update_delay > 0){
+      __update_delay--;
+      std::cout << "Update map Delay: " << 100 - __update_delay << " %" << std::endl;
+      return;
+    }
   }
 
   const size_t ptsize = ds_undistort_->size();

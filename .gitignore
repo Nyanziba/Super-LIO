@@ -1,8 +1,9 @@
 .vscode
 build
 devel
-./logs
+log
 install
+./logs
 .catkin_workspace
 .catkin_tools
 src/CMakeLists.txt
