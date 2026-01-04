@@ -121,4 +121,9 @@ We kindly recommend to cite [our paper](https://arxiv.org/abs/2509.05723) if you
   - Separate ROS interface and algorithm.
   - Refactor SuperLIOReLoc to inherit from SuperLIO.
   - Code style aligned with ROS2 version.
+
+- 2026-01-04
+  - The main branch is renamed to ros1
+  - add ros2 branch
+
 </details>
