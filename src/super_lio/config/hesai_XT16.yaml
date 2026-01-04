@@ -60,3 +60,6 @@ lio:
     map:    true           # Visualize point cloud data
     dense:  true
     pub_step: 10           # Control the frequency of point cloud visualization to save TCP bandwidth
+
+  eva:
+    timer: true

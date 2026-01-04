@@ -1,8 +1,6 @@
 #ifndef ESKF_HPP_
 #define ESKF_HPP_
 
-#include <nav_msgs/Odometry.h>
-
 #include "basic/alias.h"
 #include "basic/Manifold.h"
 #include "common/ds.h"
@@ -85,7 +83,7 @@ public:
   BASIC::V3 GetGravity() const { return g_; }
 
   bool init_ = false;
-  bool Predict(const IMUData& imu, nav_msgs::Odometry& odom, nav_msgs::Odometry& odom1);
+  bool Predict(const IMUData& imu, DynamicState& state_imu, DynamicState& state_robot);
 
 private:
   void BuildNoise(const Options& options);
@@ -109,13 +107,10 @@ private:
   BASIC::V3 global_acc_  = BASIC::V3::Zero();
   BASIC::V3 body_omega_  = BASIC::V3::Zero();
 
-  // error state
   STATE dx_ = STATE::Zero();
 
-  // covariance
   COV P_ = COV::Identity();
 
-  // noise
   NOISE Q_ = NOISE::Zero();
 
   Options options_;

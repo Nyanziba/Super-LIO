@@ -11,6 +11,9 @@ namespace LI2Sup{
   std::atomic<bool> g_flag_run = true; 
   bool g_flg_map_init = true;
 
+  /// evaluation
+  bool g_time_eva = false;
+
   bool   g_save_map;
   bool   g_if_filter; 
   string g_save_map_dir;

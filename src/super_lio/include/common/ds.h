@@ -5,11 +5,9 @@
 #include <queue>
 #include <deque>
 #include <string>
-#include <sensor_msgs/PointCloud2.h>
 
 #include "basic/alias.h"
 #include "basic/Manifold.h"
-#include "livox_ros_driver/CustomMsg.h"
 
 
 namespace LI2Sup{
@@ -121,11 +119,11 @@ struct IMUData{
 };
 
 
-struct LidarData{
+struct LidarData
+{
   double start_time = 0.0;
   double end_time = 0.0;
-  pcl::PointCloud<LI2Sup::PointXTZIT>::Ptr pc = nullptr;
-  livox_ros_driver::CustomMsg::ConstPtr msg = nullptr;
+  pcl::PointCloud<LI2Sup::PointXTZIT>::Ptr pc{nullptr};
 };
 
 

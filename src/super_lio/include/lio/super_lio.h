@@ -1,7 +1,7 @@
 
 
-#ifndef MvLIO_HPP_
-#define MvLIO_HPP_
+#ifndef SUPER_LIO_H_
+#define SUPER_LIO_H_
 
 #include <queue>
 #include <vector>
@@ -13,47 +13,48 @@
 #include <pcl/common/transforms.h>
 #include <pcl/filters/voxel_grid.h>
 
-#include <ros/ros.h>
-#include <geometry_msgs/PoseStamped.h>
-
-
 #include "basic/alias.h"
 #include "common/ds.h"
+#include "common/timer.h"
 #include "params.h"
-#include "ROSWrapper.h"
 #include "ESKF.h"
 #include "OctVoxMap/OctVoxMap.hpp"
 #include "OctVoxMap/VoxelGridFilter.h"
-
+#include "ros/ROSWrapper.h"
 
 namespace LI2Sup{
 
 class SuperLIO{
 public:
-  SuperLIO(){
-    pub_processing_time_ = nh_.advertise<geometry_msgs::PoseStamped>("/lio/processing_time", 10);
-  };
+  SuperLIO(){};
   ~SuperLIO(){};
 
-  void init();
-  void run();
-
-private:
+  void setROSWrapper(const ROSWrapper::Ptr& wrapper){
+    data_wrapper_ = wrapper;
+  }
+  virtual void init();
   void process();
+  void saveMap();
+  void printTimeRecord();
 
-  bool kf_init();
-  bool map_init();
+protected:
+  void stateWaitKFInit();
+  void stateWaitMapInit();
+  void stateProcess();
+  virtual bool kf_init();
+  virtual bool map_init();
   void Propagation_Undistort();
   void DownSample();
   void Observe();
-  void UpdateMap();
-  void Output();
+  virtual void UpdateMap();
+  virtual void Output();
   void caceData();
-  void saveMap();
   void ProcessCaceMap();
 
+  using StateFn = void (SuperLIO::*)();
   using OctVoxMapType = OctVoxMap<BASIC::V3, BASIC::scalar>;
   using KNNHeapType = KNNHeap<5, BASIC::V3>;
+  StateFn state_fn_;
   ESKF::Ptr kf_;
   OctVoxMapType::Ptr ivox_;
   VoxelGridClosest<BASIC::PointType> voxel_grid_fliter_;
@@ -79,8 +80,7 @@ private:
   std::vector<std::array<double, 4>> abcd_vec_;
   int pcd_index_ = -1;
 
-  ros::NodeHandle nh_;
-  ros::Publisher pub_processing_time_;
+  Timer time_record_;
 };
 
 } // namespace END.

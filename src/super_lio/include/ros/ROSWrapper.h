@@ -26,18 +26,16 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <visualization_msgs/MarkerArray.h>
 
-#include "params.h"
 #include "basic/alias.h"
 #include "basic/logs.h"
 #include "basic/Manifold.h"
 #include "livox_ros_driver/CustomMsg.h"
 #include "common/ds.h"
 
-#include "ESKF.h"
+#include "lio/params.h"
+#include "lio/ESKF.h"
 #include "OctVoxMap/OctVoxMap.hpp"
 
-#include "super_lio/GetMap.h"
-#include "super_lio/SetInitState.h"
 
 // #define SIM_GAZEBO
 
@@ -54,7 +52,7 @@ class ROSWrapper{
 public:
   ROSWrapper();
   ~ROSWrapper(){};
-  using Ptr = std::unique_ptr<ROSWrapper>;
+  using Ptr = std::shared_ptr<ROSWrapper>;
   bool sync_measure(MeasureGroup&);
   void spinOnce(){
     self_queue_.callAvailable();
@@ -77,38 +75,31 @@ public:
   }
 
   void pub_odom(const NavState&);
-  // void pub_cloud_body(const BASIC::CloudPtr& pc, double time);
   void pub_cloud_world(const BASIC::CloudPtr& pc, double time);
   void pub_cloud2planner(const BASIC::CloudPtr& pc, double time);
-  void pub_path();
   void pub_cloud_body_pose(const BASIC::CloudPtr& pc, 
                            const NavState& state);
   void pub_cloud_world_pose(const BASIC::CloudPtr& pc, 
                             const NavState& state);
-  
-  void pub_double_cloud_pose(const BASIC::VV3& pc_world,
-                             const BASIC::VV3& pc_body,
-                             const NavState& state);
-
   void pub_cloud_body_pose( const BASIC::VV3& pc_body,
-                            const NavState& state);  
+                            const NavState& state);
+  void pub_processing_time(double time, double current_time, double mean_time, double std_time);
+
+  void set_global_map(const BASIC::CloudPtr& global_map);
+
+  void set_initial_data(BASIC::SE3& init_pose, bool& flg_get_init_guess, bool flg_finish_init = false);
+
+
 private:
   void imuHandler(const sensor_msgs::Imu::ConstPtr&);
   void livoxHandler(const livox_ros_driver::CustomMsg::ConstPtr&);
   void stdMsgHandler(const sensor_msgs::PointCloud2::ConstPtr&);
 
-  bool GetMapCallback(super_lio::GetMap::Request& req,
-                      super_lio::GetMap::Response& res);
-  
-  bool SetInitStateCallback(super_lio::SetInitState::Request& req,
-                          super_lio::SetInitState::Response& res);
 
   ros::NodeHandle nh_;
   ros::CallbackQueue self_queue_;
   ros::Subscriber subLidar_;
   ros::Subscriber subIMU_;
-  ros::ServiceServer srv_get_map_;
-  ros::ServiceServer srv_set_init_state_;
   std::deque<IMUData>   imu_buffer_;
   std::deque<LidarData> lidar_buffer_;
   bool lidar_pushed_ = false;
@@ -125,6 +116,7 @@ private:
 
   nav_msgs::Path path_;
   sensor_msgs::PointCloud2 msg_path_point_;
+  sensor_msgs::PointCloud2 global_map_msg_;
   geometry_msgs::PoseStamped msg2uav_;
   BASIC::V3 last_path_point_ = BASIC::V3(0, 0, -100);
   tf::TransformBroadcaster br_;

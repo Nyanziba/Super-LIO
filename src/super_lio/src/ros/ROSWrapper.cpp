@@ -1,8 +1,9 @@
 
-#include "lio/ROSWrapper.h"
+#include "ros/ROSWrapper.h"
 #include "super_lio/CloudPose.h"
 #include "super_lio/CloudPose2.h"
-#include "super_lio/DoubleCloudPose.h"
+
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
 
 using namespace BASIC;
 
@@ -17,6 +18,8 @@ void LoadParamFromRos(ros::NodeHandle& nh){
   nh.getParam("/lio/map/map_name", g_map_name);
   nh.getParam("/lio/map/ds_size", g_map_ds_size);
   nh.getParam("/lio/map/save_interval", g_pcd_save_interval);
+
+  nh.getParam("/lio/eva/timer", g_time_eva);
   
   // ROS Topic input
   nh.getParam("/lio/ros/lidar_topic",  g_lidar_topic);
@@ -204,11 +207,6 @@ ROSWrapper::ROSWrapper(){
   subIMU_   = nh_.subscribe<sensor_msgs::Imu>(g_imu_topic, 10000,    // 100Hz x 10s
                &ROSWrapper::imuHandler, this, ros::TransportHints().tcpNoDelay());
 
-  srv_get_map_ = nh_.advertiseService("/lio/get_map", 
-                  &ROSWrapper::GetMapCallback, this);
-  srv_set_init_state_ = nh_.advertiseService("/lio/set_init_state", 
-                  &ROSWrapper::SetInitStateCallback, this);
-
   /// output
   pub_odom_      = nh_.advertise<nav_msgs::Odometry>("/lio/odom", 100);  /// imu frame -> lidar freq
   pub_path_      = nh_.advertise<nav_msgs::Path>("/lio/path", 1);
@@ -228,10 +226,7 @@ void ROSWrapper::livoxHandler(const livox_ros_driver::CustomMsg::ConstPtr& msg){
   lidar_data.pc->reserve(ptsize / g_filter_rate + 1);
 
   double offset_time = 0.0;
-  for(std::size_t _i = 0; _i < ptsize; _i++){
-    if (_i % g_filter_rate != 0) {
-      continue;
-    }
+  for(std::size_t _i = 0; _i < ptsize; _i += g_filter_rate){
     auto& pt = msg->points[_i];
     auto tag = pt.tag & 0x30;
     if (tag == 0x10 || tag == 0x00){
@@ -247,6 +242,15 @@ void ROSWrapper::livoxHandler(const livox_ros_driver::CustomMsg::ConstPtr& msg){
   lidar_buffer_.push_back(lidar_data);
 }
 
+
+inline bool validPoint(double x, double y, double z)
+{
+  if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z))
+    return false;
+
+  double d2 = x * x + y * y + z * z;
+  return (d2 > g_blind2 && d2 < g_maxrange2);
+}
 
 void ROSWrapper::stdMsgHandler(const sensor_msgs::PointCloud2::ConstPtr& msg){
   if(msg->data.size() < 10) return;
@@ -266,21 +270,15 @@ void ROSWrapper::stdMsgHandler(const sensor_msgs::PointCloud2::ConstPtr& msg){
     lidar_data.pc->reserve(pl_orig.size() / g_filter_rate + 1);
     const double time_begin = pl_orig.points[0].timestamp;
     lidar_data.start_time = time_begin;
-    lidar_data.end_time = pl_orig.points.back().timestamp;
-    for(std::size_t i = 0; i < pl_orig.size(); i++){
-      if (i % g_filter_rate != 0) {
-        continue;
-      }
+    for(std::size_t i = 0; i < pl_orig.size(); i += g_filter_rate)
+    {
       auto& pt = pl_orig.points[i];
-      if(pt.x == NAN || pt.y == NAN || pt.z == NAN){
-        continue;
-      }
-      dis = pt.x * pt.x + pt.y * pt.y + pt.z * pt.z;
-      if (dis > g_blind2 && dis < g_maxrange2) {
-        offset_time = pt.timestamp - time_begin;
-        lidar_data.pc->emplace_back(pt.x, pt.y, pt.z, pt.intensity, offset_time);
-      }
+      if (!validPoint(pt.x, pt.y, pt.z)) continue;
+      offset_time = pt.timestamp - time_begin;
+      lidar_data.pc->emplace_back(
+          pt.x, pt.y, pt.z, pt.intensity, offset_time);
     }
+    lidar_data.end_time = time_begin + offset_time;
     break;
   }
   case LID_TYPE::VEL_NCLT:
@@ -290,51 +288,31 @@ void ROSWrapper::stdMsgHandler(const sensor_msgs::PointCloud2::ConstPtr& msg){
     lidar_data.pc->reserve(pl_orig.size() / g_filter_rate + 1);
     lidar_data.start_time = msg->header.stamp.toSec();
     
-    for(std::size_t i = 0; i < pl_orig.size(); i++){
-      if (i % g_filter_rate != 0) {
-        continue;
-      }
+    for(std::size_t i = 0; i < pl_orig.size(); i += g_filter_rate){
       auto& pt = pl_orig.points[i];
-      if(pt.x == NAN || pt.y == NAN || pt.z == NAN){
-        continue;
-      }
-      dis = pt.x * pt.x + pt.y * pt.y + pt.z * pt.z;
-      if (dis > g_blind2 && dis < g_maxrange2) {
-        offset_time = pt.time * 1e-6;
-        lidar_data.pc->emplace_back(pt.x, pt.y, pt.z, 1, offset_time);
-      }
+      if (!validPoint(pt.x, pt.y, pt.z)) continue;
+      offset_time = pt.time * 1e-6;
+      lidar_data.pc->emplace_back(
+          pt.x, pt.y, pt.z, 1.0, offset_time);
     }
     lidar_data.end_time = lidar_data.start_time + offset_time;
     break;
   }
   case LID_TYPE::VELO16:
-  {
-    break;
-  }
   case LID_TYPE::VELO32:
   {
     pcl::PointCloud<velodyne_ros::Point> pl_orig;
     pcl::fromROSMsg(*msg, pl_orig);
     lidar_data.pc->reserve(pl_orig.size() / g_filter_rate + 1);
     lidar_data.start_time = msg->header.stamp.toSec();
-    for(std::size_t i = 0; i < pl_orig.size(); i++){
-      if (i % g_filter_rate != 0) {
-        continue;
-      }
+
+    for(std::size_t i = 0; i < pl_orig.size(); i += g_filter_rate){
       auto& pt = pl_orig.points[i];
-      if(pt.x == NAN || pt.y == NAN || pt.z == NAN){
-        continue;
-      }
-      dis = pt.x * pt.x + pt.y * pt.y + pt.z * pt.z;
-      if (dis > g_blind2 && dis < g_maxrange2) {
-        lidar_data.pc->emplace_back(pt.x, pt.y, pt.z, pt.intensity, pt.time);
-      }
+      if (!validPoint(pt.x, pt.y, pt.z)) continue;
+      lidar_data.pc->emplace_back(
+          pt.x, pt.y, pt.z, pt.intensity, pt.time);
     }
     lidar_data.end_time = lidar_data.start_time + lidar_data.pc->points.back().offset_time;
-    break;
-  }
-  case LS16:
-  {
     break;
   }
   case OUSTER:
@@ -344,20 +322,12 @@ void ROSWrapper::stdMsgHandler(const sensor_msgs::PointCloud2::ConstPtr& msg){
     lidar_data.pc->reserve(pl_orig.size() / g_filter_rate + 1);
     lidar_data.start_time = msg->header.stamp.toSec();
 
-    for(std::size_t i = 0; i < pl_orig.size(); i++){
-      if (i % g_filter_rate != 0) {
-        continue;
-      }
+    for(std::size_t i = 0; i < pl_orig.size(); i += g_filter_rate){
       auto& pt = pl_orig.points[i];
-      if(pt.x == NAN || pt.y == NAN || pt.z == NAN){
-        continue;
-      }
-
-      dis = pt.x * pt.x + pt.y * pt.y + pt.z * pt.z;
-      if (dis > g_blind2 && dis < g_maxrange2) {
-        offset_time = pt.t * 1e-9;  // ns to s
-        lidar_data.pc->emplace_back(pt.x, pt.y, pt.z, pt.intensity, offset_time);
-      }
+      if (!validPoint(pt.x, pt.y, pt.z)) continue;
+      offset_time = pt.t * 1e-9;
+      lidar_data.pc->emplace_back(
+          pt.x, pt.y, pt.z, pt.intensity, offset_time);
     }
     lidar_data.end_time = lidar_data.start_time + offset_time;
     break;
@@ -370,117 +340,86 @@ void ROSWrapper::stdMsgHandler(const sensor_msgs::PointCloud2::ConstPtr& msg){
 }
 
 
+
 void ROSWrapper::imuHandler(const sensor_msgs::Imu::ConstPtr& msg){
   IMUData data;
   data.secs = msg->header.stamp.toSec();
-  data.acc = V3(msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z);
-  // if(g_imu_type == 1){
-  //   data.acc = g_gravity_norm * V3(msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z);
-  // }else{
-  //   data.acc = V3(msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z);
-  // }
-  data.gyr = V3(msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z);
-  imu_buffer_.push_back(data);
+  data.acc  = V3(msg->linear_acceleration.x,
+                 msg->linear_acceleration.y,
+                 msg->linear_acceleration.z);
+  data.gyr  = V3(msg->angular_velocity.x,
+                 msg->angular_velocity.y,
+                 msg->angular_velocity.z);
 
   if (data.secs < last_timestamp_imu_) {
     LOG(WARNING) << "imu loop back, clear buffer";
     imu_buffer_.clear();
+    imu_buffer_.push_back(data);
+    last_timestamp_imu_ = data.secs;
+    // eskf_->Reset();   // todo:
+    return;
   }
+
+  imu_buffer_.push_back(data);
   last_timestamp_imu_ = data.secs;
 
-  nav_msgs::Odometry odom, odom1;
-  // static ros::Publisher pub_imu_odom  = nh_.advertise<nav_msgs::Odometry>("/lio/imu/odom", 10);    /// imu frame -> imu freq
+  static ros::Publisher pub_imu_odom  = nh_.advertise<nav_msgs::Odometry>("/lio/imu/odom", 10);    /// imu frame -> imu freq
   static ros::Publisher pub_robo_odom = nh_.advertise<nav_msgs::Odometry>("/lio/robo/odom", 10);   /// robot frame -> imu freq
-  if(eskf_->Predict(data, odom, odom1)){
-    // odom.header.stamp = msg->header.stamp;
-    odom1.header.stamp = msg->header.stamp;
-    // odom.header.frame_id = "world";
-    odom1.header.frame_id = "world";
-    // pub_imu_odom.publish(odom);
-    pub_robo_odom.publish(odom1);
-  }
-}
-
-
-bool ROSWrapper::GetMapCallback(super_lio::GetMap::Request& req,
-                    super_lio::GetMap::Response& res)
-{
-  LOG(INFO) << "GetMap: Request received.";
-  ivox_->getMap(res.map_data);
-  if(res.map_data.empty()){
-    res.success = false;
-    LOG(WARNING) << RED << "GetMap: Map data is empty." << RESET;
-    return true;
-  }
-  else{
-    res.success = true;
-    LOG(INFO) << GREEN << "GetMap: Map data retrieved successfully." << RESET;
-    return true;
-  }
-}
-
-
-bool ROSWrapper::SetInitStateCallback(super_lio::SetInitState::Request& req,
-                        super_lio::SetInitState::Response& res)
-{
-  LOG(INFO) << "SetInitState: Request received.";
-  LOG(INFO) << "req.pose.size(): " << req.pose.size();
-  LOG(INFO) << "req.map_data.size(): " << req.map_data.size();
-  LOG(INFO) << "req.map_data.empty(): " << req.map_data.empty();
   
-  if(req.pose.size() != 12 || req.map_data.empty()){
-    res.success = false;
-    LOG(WARNING) << RED << "SetInitState: Invalid request data. " 
-                 << "pose.size()=" << req.pose.size() 
-                 << ", map_data.empty()=" << req.map_data.empty() 
-                 << ", map_data.size()=" << req.map_data.size() << RESET;
-  }else{
-    ivox_->resetMap(req.map_data);
-    V3 _t;  M3 rot;
+  DynamicState imu_state, robo_state;
+  if(eskf_->Predict(data, imu_state, robo_state)){
+    nav_msgs::Odometry odom_imu, odom_robo;
 
-    _t[0] = req.pose[0];
-    _t[1] = req.pose[1];
-    _t[2] = req.pose[2];
-    rot(0, 0) = req.pose[3];
-    rot(0, 1) = req.pose[4];
-    rot(0, 2) = req.pose[5];
-    rot(1, 0) = req.pose[6];
-    rot(1, 1) = req.pose[7];
-    rot(1, 2) = req.pose[8];
-    rot(2, 0) = req.pose[9];
-    rot(2, 1) = req.pose[10];
-    rot(2, 2) = req.pose[11];
+    {
+      odom_imu.pose.pose.position.x = imu_state.p(0);
+      odom_imu.pose.pose.position.y = imu_state.p(1);
+      odom_imu.pose.pose.position.z = imu_state.p(2);
 
-    LOG(INFO) << "Extracted position: (" << _t[0] << ", " << _t[1] << ", " << _t[2] << ")";
-    LOG(INFO) << "Extracted rotation matrix:";
-    LOG(INFO) << "  [" << rot(0,0) << ", " << rot(0,1) << ", " << rot(0,2) << "]";
-    LOG(INFO) << "  [" << rot(1,0) << ", " << rot(1,1) << ", " << rot(1,2) << "]";
-    LOG(INFO) << "  [" << rot(2,0) << ", " << rot(2,1) << ", " << rot(2,2) << "]";
+      Quat q(imu_state.R);
+      q.normalize();
 
-    if(rot.determinant() < 0){
-      LOG(WARNING) << RED << " ---> [SuperLIO]: The rotation matrix is not valid. Resetting to identity." << RESET;
-      rot.setIdentity();
+      odom_imu.pose.pose.orientation.x = q.x();
+      odom_imu.pose.pose.orientation.y = q.y();
+      odom_imu.pose.pose.orientation.z = q.z();
+      odom_imu.pose.pose.orientation.w = q.w();
+
+      odom_imu.twist.twist.linear.x = imu_state.v(0);
+      odom_imu.twist.twist.linear.y = imu_state.v(1);
+      odom_imu.twist.twist.linear.z = imu_state.v(2);
+
+      odom_imu.twist.twist.angular.x = imu_state.w(0);
+      odom_imu.twist.twist.angular.y = imu_state.w(1);
+      odom_imu.twist.twist.angular.z = imu_state.w(2);
     }
 
-    /// input: robot_self：map <-> robot_other: map
-    SE3 input_pose_se3(rot, _t);
-    auto state = eskf_->GetSysState();
-    SE3 current_pose = eskf_->GetSE3();
-    SE3 final_pose = input_pose_se3 * current_pose;
-    state.p = final_pose.t();
-    state.R = final_pose.so3();
-    eskf_->SetX(state);
+    {
+      odom_robo.pose.pose.position.x = robo_state.p(0);
+      odom_robo.pose.pose.position.y = robo_state.p(1);
+      odom_robo.pose.pose.position.z = robo_state.p(2);
 
-    res.success = true;
-    LOG(INFO) << GREEN << "SetInitState: Map reset successfully." << RESET;
+      Quat q(robo_state.R);
+      q.normalize();
+
+      odom_robo.pose.pose.orientation.x = q.x();
+      odom_robo.pose.pose.orientation.y = q.y();
+      odom_robo.pose.pose.orientation.z = q.z();
+      odom_robo.pose.pose.orientation.w = q.w();
+    }
+
+    odom_imu.header.stamp = msg->header.stamp;
+    odom_robo.header.stamp = msg->header.stamp;
+    odom_imu.header.frame_id = "world";
+    odom_robo.header.frame_id = "world";
+    pub_imu_odom.publish(odom_imu);
+    pub_robo_odom.publish(odom_robo);
   }
-  return true;
 }
 
 
 bool ROSWrapper::sync_measure(MeasureGroup& meas){
   if (lidar_buffer_.empty() || imu_buffer_.empty()) {
     return false;
+  }else{
   }
 
   /*** push a lidar scan ***/
@@ -602,14 +541,6 @@ void ROSWrapper::pub_odom(const NavState& state){
   // br_.sendTransform(tf::StampedTransform(transform, odom.header.stamp, "world", "god"));
 }
 
-// void ROSWrapper::pub_cloud_body(const CloudPtr& pc,double time){
-//   static ros::Publisher pub_cloud_body_ = nh_.advertise<sensor_msgs::PointCloud2>("/lio/cloud_body", 10);
-//   sensor_msgs::PointCloud2 cloud;
-//   pcl::toROSMsg(*pc, cloud);
-//   cloud.header.frame_id = "body";
-//   cloud.header.stamp = ros::Time().fromSec(time);
-//   pub_cloud_body_.publish(cloud);
-// }
 
 
 void ROSWrapper::pub_cloud_world(const CloudPtr& pc,double time){
@@ -676,42 +607,6 @@ void ROSWrapper::pub_cloud_world_pose(const CloudPtr& pc,
 }
 
 
-void ROSWrapper::pub_double_cloud_pose(const BASIC::VV3& pc_world,
-                                       const BASIC::VV3& pc_body,
-                                       const NavState& state)
-{
-  static ros::Publisher pub_msg_ = nh_.advertise<super_lio::DoubleCloudPose>
-                                            ("/lio/double_cloud_pose", 10);
-  super_lio::DoubleCloudPose cloud_pose;
-  cloud_pose.header.stamp = ros::Time().fromSec(state.timestamp);  
-
-  cloud_pose.pose.reserve(12);
-  cloud_pose.pose.push_back(state.p[0]);
-  cloud_pose.pose.push_back(state.p[1]);
-  cloud_pose.pose.push_back(state.p[2]);
-
-  for (int r = 0; r < 3; ++r)
-    for (int c = 0; c < 3; ++c)
-      cloud_pose.pose.push_back(state.R.R_(r, c));
-
-  cloud_pose.cloud_world.reserve(pc_world.size() * 3);
-  for (const auto& pt : pc_world) {
-    cloud_pose.cloud_world.push_back(pt[0]);
-    cloud_pose.cloud_world.push_back(pt[1]);
-    cloud_pose.cloud_world.push_back(pt[2]);
-  }
-
-  cloud_pose.cloud_lidar.reserve(pc_body.size() * 3);
-  for (const auto& pt : pc_body) {
-    cloud_pose.cloud_lidar.push_back(pt[0]);
-    cloud_pose.cloud_lidar.push_back(pt[1]);
-    cloud_pose.cloud_lidar.push_back(pt[2]);
-  }
-
-  pub_msg_.publish(cloud_pose);
-}
-
-
 void ROSWrapper::pub_cloud_body_pose( 
       const BASIC::VV3& pc_body,
       const NavState& state)
@@ -740,5 +635,86 @@ void ROSWrapper::pub_cloud_body_pose(
 
   pub_msg_.publish(cloud_pose);
 }
+
+
+void ROSWrapper::pub_processing_time(double time, double current_time, double mean_time, double std_time)
+{
+  static ros::Publisher pub_process_time_ = nh_.advertise<geometry_msgs::PoseStamped>
+                                            ("/lio/processing_time", 10);
+  geometry_msgs::PoseStamped msg;
+  msg.header.stamp = ros::Time().fromSec(time);
+  msg.pose.position.x = current_time;
+  msg.pose.position.y = mean_time;
+  msg.pose.position.z = std_time;
+  pub_process_time_.publish(msg);
+}
+
+
+void ROSWrapper::set_global_map(const BASIC::CloudPtr& global_map){
+  pcl::toROSMsg(*global_map, global_map_msg_);
+  global_map_msg_.header.frame_id = "world";
+
+  static ros::Publisher global_map_pub =
+    nh_.advertise<sensor_msgs::PointCloud2>("/lio/global_map", 1, true);
+
+  static ros::Timer global_map_timer =
+    nh_.createTimer(
+      ros::Duration(1.0),
+      [this](const ros::TimerEvent&) {
+        static int count = -1;
+        static int publish_interval = 1;
+        count++;
+        if (count % publish_interval != 0) {
+          return;
+        }
+        count = 0;
+        publish_interval++;
+        if(publish_interval > 10) publish_interval = 10;
+        global_map_msg_.header.stamp = ros::Time::now();
+        global_map_pub.publish(global_map_msg_);
+      });
+}
+
+void ROSWrapper::set_initial_data(BASIC::SE3& init_pose, bool& flg_get_init_guess, bool flg_finish_init)
+{
+  static ros::Subscriber init_pose_sub =
+    nh_.subscribe<geometry_msgs::PoseWithCovarianceStamped>(
+      "/initialpose", 1,
+      [this, &init_pose, &flg_get_init_guess]
+      (const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg)
+      {
+        V3 init_translation;
+        init_translation << 
+            msg->pose.pose.position.x,
+            msg->pose.pose.position.y,
+            0.2;
+
+        double x = msg->pose.pose.orientation.x;
+        double y = msg->pose.pose.orientation.y;
+        double z = msg->pose.pose.orientation.z;
+        double w = msg->pose.pose.orientation.w;
+
+        Quat init_rotation(w, x, y, z);
+
+        init_pose = SE3(SO3(init_rotation.toRotationMatrix()), init_translation);
+
+        flg_get_init_guess = true;
+        
+        LOG(INFO) << YELLOW
+                  << " ---> GET Initial guess: "
+                  << init_translation.transpose()
+                  << " yaw: "
+                  << init_rotation.toRotationMatrix()
+                          .eulerAngles(0, 1, 2)
+                          .transpose()
+                  << RESET;
+      });
+
+  if (flg_finish_init) {
+    init_pose_sub = ros::Subscriber();
+  }
+}
+
+
 
 } // namespace END.

@@ -111,22 +111,24 @@ void ESKF::Update() {
 }
 
 
-bool ESKF::Predict(const IMUData& imu, nav_msgs::Odometry& odom, nav_msgs::Odometry& odom1){
+bool ESKF::Predict(const IMUData& imu, DynamicState& state_imu, DynamicState& state_robot){
   if(!init_) {
     return false;
   }
 
+  /// first time predict
   if(forward_time_ < 0){
     forward_time_ = imu.secs;
     forward_last_imu_ = imu;
     return false;
   }
 
-  if(imu.secs <= forward_time_){
+  double dt = imu.secs - forward_time_;
+
+  if(dt < 0 || dt > 0.2){
     return false;
   }
 
-  double dt = imu.secs - forward_time_;
   V3 acc = 0.5 * (imu.acc + forward_last_imu_.acc);
   acc = imu_scale_ * acc;
   acc = acc - ba_;
@@ -140,35 +142,22 @@ bool ESKF::Predict(const IMUData& imu, nav_msgs::Odometry& odom, nav_msgs::Odome
   fw_v_ = new_v;
   fw_p_ = new_p;
 
-  V4 coeffs = fw_R_.coeffs();
-  odom.header.frame_id = "map";
-  odom.pose.pose.position.x = fw_p_(0);
-  odom.pose.pose.position.y = fw_p_(1);
-  odom.pose.pose.position.z = fw_p_(2);
-  odom.pose.pose.orientation.x = coeffs[0];
-  odom.pose.pose.orientation.y = coeffs[1];
-  odom.pose.pose.orientation.z = coeffs[2];
-  odom.pose.pose.orientation.w = coeffs[3];
-  odom.twist.twist.linear.x = fw_v_(0);
-  odom.twist.twist.linear.y = fw_v_(1);
-  odom.twist.twist.linear.z = fw_v_(2);
-  odom.twist.twist.angular.x = imu.gyr(0);
-  odom.twist.twist.angular.y = imu.gyr(1);
-  odom.twist.twist.angular.z = imu.gyr(2);
+  state_imu.time = imu.secs;
+  state_imu.R = fw_R_.R_;
+  state_imu.p = fw_p_;
+  state_imu.v = fw_v_;
+  state_imu.w = gyr;
+  state_imu.a = acc;
   forward_time_ = imu.secs;
   forward_last_imu_ = imu;
 
   new_R.R_ = fw_R_.R_ * g_odom_robo.R_;
   new_p = fw_R_.R_ * ( - g_odom_robo.R_ * g_odom_robo.t_) + fw_p_;
-  coeffs = new_R.coeffs();
-  odom1 = odom;
-  odom1.pose.pose.position.x = new_p(0);
-  odom1.pose.pose.position.y = new_p(1);
-  odom1.pose.pose.position.z = new_p(2);
-  odom1.pose.pose.orientation.x = coeffs[0];
-  odom1.pose.pose.orientation.y = coeffs[1];
-  odom1.pose.pose.orientation.z = coeffs[2];
-  odom1.pose.pose.orientation.w = coeffs[3];
+  state_robot.time = imu.secs;
+  state_robot.R = new_R.R_;
+  state_robot.p = new_p;
+  // todo: v, w, a
+
   return true;
 }
 
@@ -258,8 +247,6 @@ bool ESKF::UpdateObserve(ESKF::ObsFunc obs) {
      */
     Pk = P_;
     M3 J_theta = M3::Identity() - 0.5 * SO3::hat((R_0.inverse() * R_).log_vee());
-    // V3 delta_theta = (R_0.inverse() * R_).log_vee();
-    // M3 J_theta = A_matrix(delta_theta).transpose().cast<scalar>();
     for(int j = 0; j < STATE_DIM; j+=3){
       Pk.block<3,3>(0, j).noalias() = J_theta * P_.block<3,3>(0, j);
     }
@@ -307,7 +294,6 @@ bool ESKF::UpdateObserve(ESKF::ObsFunc obs) {
 
   // project P
   M3 J_theta = M3::Identity() - 0.5 * SO3::hat(dx_.template block<3, 1>(0, 0));
-  // M3 J_theta = A_matrix(dx_.template block<3, 1>(0, 0)).transpose().cast<scalar>();   // J_l^T = J_r
   for(int j = 0; j < STATE_DIM; j+=3){
     Pk.block<3,3>(0, j).noalias() = J_theta * P_.block<3,3>(0, j);
   }

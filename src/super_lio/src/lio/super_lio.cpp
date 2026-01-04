@@ -8,8 +8,6 @@
 #include <tbb/enumerable_thread_specific.h>
 
 
-#define LIO_TIME_EVA
-
 using namespace BASIC;
 
 namespace LI2Sup{
@@ -67,9 +65,7 @@ inline bool compute_error(
 void SuperLIO::init(){
   ivox_.reset(new OctVoxMapType(OctVoxMapType::Options{g_ivox_resolution, g_ivox_capacity}));
   kf_.reset(new ESKF());
-  data_wrapper_.reset(new ROSWrapper());
   data_wrapper_->setESKF(kf_);
-  data_wrapper_->setMap(ivox_);
   
   scan_undistort_full_.reset(new PointCloudType());
   ds_undistort_.reset(new PointCloudType());
@@ -85,53 +81,34 @@ void SuperLIO::init(){
   effect_knn_idxs_.resize(20000);
   voxel_grid_fliter_.setLeafSize(g_voxel_fliter_size);
 
-  LOG(INFO) << YELLOW << " ---> Initializing..." << RESET;
-  
-  bool init_state_once = true;
-  auto start_time = std::chrono::high_resolution_clock::now();
-  ros::Rate loop(100);
-  while(ros::ok() && g_flag_run){
-    data_wrapper_->spinOnce();
-    if(!data_wrapper_->sync_measure(measures_)){
-      loop.sleep();
-      continue;
-    }
-    if(init_state_once){
-      start_time = std::chrono::high_resolution_clock::now();
-      init_state_once = false;
-    }
-    if(kf_init()) break;
-    loop.sleep();
+  state_fn_ = &SuperLIO::stateWaitKFInit;
+
+  LOG(INFO) << GREEN << " ---> [SuperLIO]: initialized." << RESET;
+}
+
+
+void SuperLIO::stateWaitKFInit()
+{
+  if (kf_init()) {
+    state_fn_ = &SuperLIO::stateWaitMapInit;
+    LOG(INFO) << GREEN << " ---> [SuperLIO]: KF init done" << RESET;
   }
-  
-  if(!g_flag_run || !ros::ok()) return;
-  auto end_time = std::chrono::high_resolution_clock::now();
-  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
-  LOG(INFO) << GREEN << " ---> KF init success. Time: " << duration.count() << " ms." << RESET;
+}
 
-  init_state_once = true;
-
-  while(ros::ok() && g_flag_run){
-    data_wrapper_->spinOnce();
-    if(!data_wrapper_->sync_measure(measures_)){
-      loop.sleep();
-      continue;
-    }
-    if(init_state_once){
-      start_time = std::chrono::high_resolution_clock::now();
-      init_state_once = false;
-    }
-    if(map_init()){
-      kf_->init_ = true;
-      break;
-    }
-    loop.sleep();
+void SuperLIO::stateWaitMapInit()
+{
+  if (map_init()) {
+    kf_->init_ = true;
+    state_fn_ = &SuperLIO::stateProcess;
+    LOG(INFO) << GREEN << " ---> [SuperLIO]: Map init done" << RESET;
   }
+}
 
-  if(!g_flag_run || !ros::ok()) return;
-  end_time = std::chrono::high_resolution_clock::now();
-  duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
-  LOG(INFO) << GREEN << " ---> Map init success. Time: " << duration.count() << " ms." << RESET;
+void SuperLIO::process(){
+  if(!data_wrapper_->sync_measure(measures_)){
+    return;
+  }
+  (this->*state_fn_)();
 }
 
 
@@ -163,7 +140,6 @@ bool SuperLIO::kf_init(){
   // Perform LiDAR leveling correction, then transform the orientation into the robot frame.
   M3 rot = g_lidar_robo_yaw * R_yaw_inv * init_rot;  
 
-
   ESKF::Options options;
   options.gyro_var_ = g_imu_ng;
   options.acce_var_ = g_imu_na;
@@ -188,7 +164,7 @@ bool SuperLIO::map_init(){
   frame_num_++;
 
   std::size_t ptsize = measures_.lidar.pc->size();
-  points_world_v3_.resize(ptsize);  
+  points_world_v3_.resize(ptsize);
 
   const SE3 transform = sys_init_pose_ * g_lidar_imu;
 
@@ -206,7 +182,6 @@ bool SuperLIO::map_init(){
   ivox_->insert(points_world_v3_);
   kf_->SetLastObsTime(measures_.lidar.end_time);
 
-  // 20 Hz for 1.0 seconds. Integral coverage area > 70%
   if(frame_num_ > 3){
     g_flg_map_init = false;
     return true;
@@ -215,17 +190,21 @@ bool SuperLIO::map_init(){
 }
 
 
-void SuperLIO::run(){
-  ros::Rate loop(500);
-  if(ros::ok() && g_flag_run) LOG(INFO) << GREEN << " ---> Running..." << RESET;
-  while(ros::ok() && g_flag_run){
-    data_wrapper_->spinOnce();
-    process();
-    loop.sleep();
+void SuperLIO::stateProcess(){
+  frame_num_++;
+  if(g_time_eva){
+    time_record_.Evaluate([this](){Propagation_Undistort();}, "Undistort");
+    time_record_.Evaluate([this]() { DownSample(); }, "DownSample");
+    time_record_.Evaluate([this]() { Observe(); }, "Observe");
+    time_record_.Evaluate([this]() { UpdateMap(); }, "UpdateMap");
+  }else{
+    Propagation_Undistort();
+    DownSample();
+    Observe();
+    UpdateMap();
   }
-  
-  LOG(INFO) << GREEN << " ---> [SuperLIO]:  Exit." << RESET;
-  saveMap();
+  Output();
+  caceData();
 }
 
 
@@ -343,10 +322,8 @@ void SuperLIO::saveMap(){
       point_map_->clear();
     }
     LOG(INFO) << GREEN << " ---> Save last cace success. " << RESET;
-    LOG(INFO) << YELLOW << " ---> The final processing will take a long time." << RESET;
-    LOG(INFO) << YELLOW << " ---> Please do not close the program ... " << RESET;
+    LOG(INFO) << YELLOW << " ---> Process cace map ... " << RESET;
     ProcessCaceMap();
-    LOG(INFO) << GREEN << " ---> Process cace map success. " << RESET;
     return;
   }
 
@@ -368,120 +345,6 @@ void SuperLIO::saveMap(){
     LOG(INFO) << GREEN << " ---> Save map success. File: " << map_name << RESET;
     LOG(INFO) << GREEN << " ---> Map size: " << latst_map.size() << RESET;
   }
-}
-
-
-inline double get_cpu_time_seconds() {
-  struct rusage usage;
-  getrusage(RUSAGE_SELF, &usage);
-  return usage.ru_utime.tv_sec + usage.ru_utime.tv_usec / 1e6 +
-         usage.ru_stime.tv_sec + usage.ru_stime.tv_usec / 1e6;
-}
-
-void SuperLIO::process(){
-  if(!data_wrapper_->sync_measure(measures_)){
-    return;
-  }
-
-
-#ifdef LIO_TIME_EVA
-  auto __t_start = std::chrono::high_resolution_clock::now();
-  auto __t0 = std::chrono::high_resolution_clock::now();
-  auto __t1 = std::chrono::high_resolution_clock::now();
-  auto __t2 = std::chrono::high_resolution_clock::now();
-#endif
-
-
-  Propagation_Undistort();
-
-
-#ifdef LIO_TIME_EVA
-  __t1 = std::chrono::high_resolution_clock::now();
-  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(__t1 - __t2);
-  static double _sum_undistort_time_wall = 0;
-  _sum_undistort_time_wall += duration.count() / 1000.0;
-#endif
-
-
-  DownSample();
-
-
-#ifdef LIO_TIME_EVA
-  __t2 = std::chrono::high_resolution_clock::now();
-  duration = std::chrono::duration_cast<std::chrono::microseconds>(__t2 - __t1);
-  static double _sum_downsample_time_wall = 0;
-  _sum_downsample_time_wall += duration.count() / 1000.0; 
-#endif
-
-
-  Observe();
-
-
-#ifdef LIO_TIME_EVA
-  __t1 = std::chrono::high_resolution_clock::now();
-  duration = std::chrono::duration_cast<std::chrono::microseconds>(__t1 - __t2);
-  static double _sum_observe_time_wall = 0;
-  _sum_observe_time_wall += duration.count() / 1000.0;
-#endif
-
-
-  UpdateMap();
-
-
-#ifdef LIO_TIME_EVA
-
-  auto __t_end = std::chrono::high_resolution_clock::now();
-  auto __duration = std::chrono::duration_cast<std::chrono::microseconds>(__t_end - __t_start);
-  double __current_time = __duration.count() / 1000.0;
-
-  static std::size_t __sum_count = 0;
-  static double __sum_time_wall = 0.0;
-  static double __mean = 0.0;
-  static double __M2 = 0.0;
-
-  __sum_count++;
-  __sum_time_wall += __current_time;
-
-  double __delta = __current_time - __mean;
-  __mean += __delta / __sum_count;
-  double __delta2 = __current_time - __mean;
-  __M2 += __delta * __delta2;
-
-  double __mean_time = __mean;
-  double __std_time = (__sum_count > 1) ? std::sqrt(__M2 / (__sum_count - 1)) : 0.0;
-
-  __t2 = std::chrono::high_resolution_clock::now();
-  duration = std::chrono::duration_cast<std::chrono::microseconds>(__t2 - __t1);
-  static double _sum_update_map_time_wall = 0;
-  _sum_update_map_time_wall += duration.count() / 1000.0;
-
-  auto t_end = std::chrono::high_resolution_clock::now();
-
-  duration = std::chrono::duration_cast<std::chrono::microseconds>(t_end - __t0);
-  static int _count = 0;
-  static double _sum_time = 0;
-  _sum_time += duration.count() / 1000.0;
-  _count ++;
-
-  std::cout << "AVG(ms): " << _sum_time / _count << " undistort: " << _sum_undistort_time_wall / _count 
-            << " downsample: " << _sum_downsample_time_wall / _count
-            << " state_update: " << _sum_observe_time_wall / _count << " map_update: " << _sum_update_map_time_wall / _count << std::endl << std::endl;
-
-  geometry_msgs::PoseStamped msg;
-  double timestamp = kf_->GetTime();
-  msg.header.stamp = ros::Time(timestamp);
-  msg.pose.position.x = __current_time;
-  msg.pose.position.y = __mean_time;
-  msg.pose.position.z = __std_time;
-  pub_processing_time_.publish(msg);
-
-#endif
-
-
-  caceData(); 
-
-  Output();
-
 }
 
 
@@ -707,6 +570,11 @@ void SuperLIO::Output(){
       data_wrapper_->pub_cloud_world(world_pc, state.timestamp);
     }
   }
+}
+
+void SuperLIO::printTimeRecord(){
+  if(!g_time_eva) return;
+  time_record_.PrintAll();
 }
 
 } // namespace END.

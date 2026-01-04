@@ -28,6 +28,9 @@ namespace LI2Sup{
   extern std::atomic<bool> g_flag_run;
   extern bool g_flg_map_init;
 
+  /// evaluation
+  extern bool g_time_eva;
+
   extern bool g_save_map;
   extern bool g_if_filter;
   extern std::string g_map_name;
@@ -53,7 +56,7 @@ namespace LI2Sup{
   extern double g_imu_nbg;
 
   extern BASIC::SE3 g_lidar_imu;      // lidar in imu frame
-  extern BASIC::SE3 g_odom_robo;     // lidar in robot frame
+  extern BASIC::SE3 g_odom_robo;      // lidar in robot frame
   extern BASIC::M3  g_lidar_robo_yaw; // lidar in robot frame rotation only yaw
 
   /// hash_map

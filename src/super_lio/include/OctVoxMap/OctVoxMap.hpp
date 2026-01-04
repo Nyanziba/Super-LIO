@@ -167,8 +167,8 @@ public:
   
   OctVoxMap(Options options){
     SetOptions(options);
-    std::cout << " ---> OctVoxMap init. Resolution: " << resolution_ 
-              << " Capacity: " << capacity_ << std::endl;
+    // std::cout << " ---> OctVoxMap init. Resolution: " << resolution_ 
+    //           << " Capacity: " << capacity_ << std::endl;
     flat_search_ptrs_.reserve(flat_search_order_offsets.size());
     for(std::size_t i = 0; i < flat_search_order_offsets.size(); i++){
       uint16_t start = flat_search_order_offsets[i];

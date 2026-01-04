@@ -83,3 +83,6 @@ lio:
     # example: [0.0, 0.0, 1.0, 0.0, 0.0, 90.0]
     # It is recommended to set only the yaw angle.
     # Roll and pitch should be left unset, as they are automatically estimated to maintain level alignment.
+
+  eva:
+    timer: true

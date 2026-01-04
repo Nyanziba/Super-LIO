@@ -57,3 +57,6 @@ lio:
     map:    true
     dense:  true
     pub_step: 5
+
+  eva:
+    timer: true

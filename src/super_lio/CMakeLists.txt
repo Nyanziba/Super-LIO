@@ -32,13 +32,6 @@ add_message_files(
   FILES
   CloudPose.msg
   CloudPose2.msg
-  DoubleCloudPose.msg
-)
-
-add_service_files(
-  FILES
-  GetMap.srv
-  SetInitState.srv
 )
 
 generate_messages(
@@ -64,7 +57,7 @@ catkin_package(
 )
 
 # LIO library source files
-file(GLOB_RECURSE LIO_LIB_SRC "src/lio/*.cpp")
+file(GLOB_RECURSE LIO_LIB_SRC "src/lio/*.cpp" "src/ros/*.cpp")
 
 file(GLOB_RECURSE LIO_LIB_HEADERS "include/lio/*.hpp" "include/lio/*.h")
 
@@ -99,14 +92,8 @@ target_link_libraries(super_lio_node
 )
 
 
-add_executable(relocation_node src/apps/relocation_node.cpp src/apps/relocation.cpp)
+add_executable(relocation_node src/apps/relocation_node.cpp)
 target_link_libraries(relocation_node
   lio
   ${catkin_LIBRARIES}
-)
-
-
-catkin_install_python(PROGRAMS
-  scripts/monitor_hud.py
-  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
