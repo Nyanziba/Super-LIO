@@ -424,10 +424,7 @@ void ROSWrapper::livoxHandler(const livox_ros_driver2::msg::CustomMsg::SharedPtr
   lidar_data.pc->reserve(ptsize / g_filter_rate + 1);
 
   double offset_time = 0.0;
-  for(std::size_t _i = 0; _i < ptsize; _i++){
-    if (_i % g_filter_rate != 0) {
-      continue;
-    }
+  for(std::size_t _i = 0; _i < ptsize; _i += g_filter_rate){
     auto& pt = msg->points[_i];
     auto tag = pt.tag & 0x30;
     if (tag == 0x10 || tag == 0x00){
