@@ -80,7 +80,6 @@ void SuperLIOReLoc::init(){
     point_map_.reset(new PointCloudType());
   }
 
-  point_map_.reset(new PointCloudType());
   init_obs_data_.reset(new PointCloudType());
   
   points_world_v3_.reserve(21000);
