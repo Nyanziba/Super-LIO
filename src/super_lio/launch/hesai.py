@@ -9,7 +9,7 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     pkg_super_lio = get_package_share_directory('super_lio')
-    config_yaml = os.path.join(pkg_super_lio, 'config', 'hesai_XT16.yaml')
+    config_yaml = os.path.join(pkg_super_lio, 'config', 'hesai.yaml')
     rviz_config_file = os.path.join(pkg_super_lio, 'rviz', 'lio.rviz')
 
     declare_rviz_arg = DeclareLaunchArgument(
