@@ -1,6 +1,7 @@
 .vscode
 build
 devel
+log
 ./logs
 install
 .catkin_workspace
