@@ -1,11 +1,10 @@
 <div align="center">
   <h1>⚡Super-LIO</h1>
   <h2>Super-LIO: A Robust and Efficient LiDAR-Inertial Odometry System with a Compact Mapping Strategy</h2>
-  <p><strong>This work has been accepted to <i> IEEE Robotics and Automation Letters (RA-L 2025)</i>.</strong></p>
+  <p><strong>This work has been accepted to <i> IEEE Robotics and Automation Letters (RA-L 2026)</i>.</strong></p>
   <br>
 
-  [![Code](https://img.shields.io/badge/Code-GitHub-181717?style=flat-square&logo=github&logoWidth=16)](https://github.com/Liansheng-Wang/Super-LIO.git) [![arXiv](https://img.shields.io/badge/arXiv-2509.05723-b31b1b?style=flat-square&logo=arXiv&logoWidth=16)](https://arxiv.org/abs/2509.05723) [![Bilibili](https://img.shields.io/badge/Bilibili-00A1D6?style=flat-square&logo=bilibili&logoColor=white&logoWidth=16)](https://www.bilibili.com/video/BV11wBeBYEp6) [![YouTube](https://img.shields.io/badge/YouTube-FF0000?style=flat-square&logo=youtube&logoColor=white&logoWidth=16)](https://youtu.be/m9-hl8s5DDw)
-  <!-- [![IEEE](https://img.shields.io/badge/Paper-RAL2025-004088.svg)](https://ieeexplore.ieee.org/document/xxxx) -->
+  [![Code](https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoWidth=16)](https://github.com/Liansheng-Wang/Super-LIO.git) [![arXiv](https://img.shields.io/badge/arXiv-blue?logo=arxiv&color=%23B31B1B)](https://arxiv.org/abs/2509.05723) [![IEEE](https://img.shields.io/badge/RAL2026-004088.svg)](https://ieeexplore.ieee.org/document/11347459) [![Bilibili](https://img.shields.io/badge/Bilibili-00A1D6?style=flat-square&logo=bilibili&logoColor=white&logoWidth=16)](https://www.bilibili.com/video/BV11wBeBYEp6) [![YouTube](https://img.shields.io/badge/YouTube-FF0000?style=flat-square&logo=youtube&logoColor=white&logoWidth=16)](https://youtu.be/m9-hl8s5DDw)
 </div>
 
 
@@ -103,11 +102,12 @@ If your like our projects, please cite us and support us with a star 🌟.
 We kindly recommend to cite [our paper](https://arxiv.org/abs/2509.05723) if you find this library useful:
 
 ```latex
-@article{wang2025super,
-  title={Super-LIO: A Robust and Efficient LiDAR-Inertial Odometry System with a Compact Mapping Strategy},
-  author={Wang, Liansheng and Zhang, Xinke and Li, Chenhui and He, Dongjiao and Pan, Yihan and Yi, Jianjun},
-  journal={arXiv preprint arXiv:2509.05723},
-  year={2025}
+@article{Wang2026SuperLIO,
+  author  = {Liansheng Wang and Xinke Zhang and Chenhui Li and Dongjiao He and Yihan Pan and Jianjun Yi},
+  title   = {Super-LIO: A Robust and Efficient LiDAR-Inertial Odometry System With a Compact Mapping Strategy},
+  journal = {IEEE Robotics and Automation Letters},
+  year    = {2026},
+  doi     = {10.1109/LRA.2026.3653372}
 }
 ```
 
