@@ -99,7 +99,7 @@ including indoor, outdoor, and large-scale scenes.
 ## Publications
 
 If your like our projects, please cite us and support us with a star 🌟.
-We kindly recommend to cite [our paper](https://arxiv.org/abs/2509.05723) if you find this library useful:
+We kindly recommend to cite [our paper](https://ieeexplore.ieee.org/document/11347459) if you find this library useful:
 
 ```latex
 @article{Wang2026SuperLIO,
