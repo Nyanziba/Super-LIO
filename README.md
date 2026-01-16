@@ -48,7 +48,7 @@ Super-LIO is a robust and efficient LiDAR–Inertial Odometry (LIO) system desig
 
 ### Requirements
 
-Ubuntu 20.04 · C++20 · ROS Jazzy · Eigen · PCL 
+Ubuntu 24(22).04 · C++20 · ROS Jazzy(Humble) · Eigen · PCL 
 
 ### Dependencies
 
