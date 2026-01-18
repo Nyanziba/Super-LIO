@@ -298,8 +298,7 @@ void OctVoxMap<Point, Scalar>::insert(const Points& cloud_world){
     } else {
       iter->second->second.AddPoint(pt, local_idx);
       data_.splice(data_.begin(), data_, iter->second);
-      grids_.erase(iter);
-      grids_.insert(std::make_pair(key, data_.begin()));
+      iter.value() = data_.begin();
     }
   }
 }
