@@ -76,9 +76,7 @@ void SuperLIOReLoc::init(){
   world_pc_.reset(new PointCloudType());
   ds_world_.reset(new PointCloudType());
 
-  if(g_save_map){
-    point_map_.reset(new PointCloudType());
-  }
+  point_map_.reset(new PointCloudType());
 
   init_obs_data_.reset(new PointCloudType());
   
@@ -262,7 +260,7 @@ bool SuperLIOReLoc::kf_init(){
 
   {
     point_map_->clear();
-    point_map_ = nullptr;
+    point_map_.reset(new PointCloudType());
     init_obs_data_->clear();
     init_obs_data_ = nullptr;
     data_wrapper_->set_initial_data(re_init_pose_, flg_get_init_guess_, true);
