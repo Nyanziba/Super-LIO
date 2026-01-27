@@ -102,11 +102,14 @@ If your like our projects, please cite us and support us with a star 🌟.
 We kindly recommend to cite [our paper](https://ieeexplore.ieee.org/document/11347459) if you find this library useful:
 
 ```latex
-@article{Wang2026SuperLIO,
-  author  = {Liansheng Wang and Xinke Zhang and Chenhui Li and Dongjiao He and Yihan Pan and Jianjun Yi},
-  title   = {Super-LIO: A Robust and Efficient LiDAR-Inertial Odometry System With a Compact Mapping Strategy},
+@article{wang2026superlio,
+  title   = {Super-LIO: A Robust and Efficient LiDAR-Inertial Odometry System with a Compact Mapping Strategy},
+  author  = {Wang, Liansheng and Zhang, Xinke and Li, Chenhui and He, Dongjiao and Pan, Yihan and Yi, Jianjun},
   journal = {IEEE Robotics and Automation Letters},
   year    = {2026},
+  volume  = {11},
+  number  = {3},
+  pages   = {2666--2673},
   doi     = {10.1109/LRA.2026.3653372}
 }
 ```
