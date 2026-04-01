@@ -23,6 +23,7 @@ namespace LI2Sup{
   
   string g_imu_topic;
   string g_lidar_topic;
+  string g_world_frame_id = "world";
 
   int    g_lidar_type;
   float  g_blind2;

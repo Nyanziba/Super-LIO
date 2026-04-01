@@ -13,7 +13,7 @@
     lio.sensor.lidar_type: 1
     lio.sensor.blind: 0.3
     lio.sensor.maxrange: 100.0
-    lio.sensor.filter_rate: 3.0
+    lio.sensor.filter_rate: 3
     lio.sensor.enable_downsample: true
     lio.sensor.voxel_fliter_size: 0.5
     lio.sensor.gravity_norm: 9.7946
@@ -21,7 +21,7 @@
     lio.sensor.imu_na: 0.1
     lio.sensor.imu_ng: 0.1
     lio.sensor.imu_nba: 0.0001
-    lio.sensor.nbg: 0.0001
+    lio.sensor.imu_nbg: 0.0001
 
     lio.extrinsic.lidar_imu: [-0.011, -0.02329, 0.04412, 
                               1.0, 0.0, 0.0, 
