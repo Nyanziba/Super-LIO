@@ -41,6 +41,15 @@ protected:
   void stateWaitKFInit();
   void stateWaitMapInit();
   void stateProcess();
+  bool isInProcessState() const {
+    return state_fn_ == &SuperLIO::stateProcess;
+  }
+  void requestReinitFromKF() {
+    if (kf_) {
+      kf_->init_ = false;
+    }
+    state_fn_ = &SuperLIO::stateWaitKFInit;
+  }
   virtual bool kf_init();
   virtual bool map_init();
   void Propagation_Undistort();

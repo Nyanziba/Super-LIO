@@ -24,6 +24,7 @@ public:
   ~SuperLIOReLoc(){};
 
   void init() override;
+  void process();
 
 private:
   bool kf_init() override;

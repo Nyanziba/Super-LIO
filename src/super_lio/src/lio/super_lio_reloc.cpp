@@ -95,6 +95,22 @@ void SuperLIOReLoc::init(){
 }
 
 
+void SuperLIOReLoc::process(){
+  if (flg_get_init_guess_ && isInProcessState()) {
+    LOG(INFO) << YELLOW << " ---> Re-localization requested from /initialpose" << RESET;
+    data_wrapper_->clear();
+    frame_num_ = 0;
+    flg_first_scan_ = true;
+    if (init_obs_data_) {
+      init_obs_data_->clear();
+    }
+    requestReinitFromKF();
+  }
+
+  SuperLIO::process();
+}
+
+
 bool SuperLIOReLoc::map_init(){
   static bool pcd_loaded = false;
   if(pcd_loaded) return true;
@@ -198,20 +214,45 @@ bool SuperLIOReLoc::kf_init(){
   pcl::PointCloud<pcl::PointXYZI>::Ptr tmp_src(new pcl::PointCloud<pcl::PointXYZI>());
   pcl::transformPointCloud(*init_obs_data_, *tmp_src, g_lidar_imu.matrix().cast<float>());
 
+  pcl::PointCloud<pcl::PointXYZI>::Ptr reloc_target(new pcl::PointCloud<pcl::PointXYZI>());
+  if (g_reloc_search_radius_xy > 0.0) {
+    const double r2 = g_reloc_search_radius_xy * g_reloc_search_radius_xy;
+    reloc_target->reserve(point_map_->size());
+    for (const auto & pt : point_map_->points) {
+      const double dx = static_cast<double>(pt.x) - init_guess_t_(0);
+      const double dy = static_cast<double>(pt.y) - init_guess_t_(1);
+      if ((dx * dx + dy * dy) <= r2) {
+        reloc_target->push_back(pt);
+      }
+    }
+    if (reloc_target->size() < 2000) {
+      LOG(WARNING) << YELLOW
+                   << " ---> Reloc target crop too small (" << reloc_target->size()
+                   << "), fallback to full map." << RESET;
+      *reloc_target = *point_map_;
+    } else {
+      LOG(INFO) << GREEN
+                << " ---> Reloc target cropped by radius " << g_reloc_search_radius_xy
+                << " m, points: " << reloc_target->size() << RESET;
+    }
+  } else {
+    *reloc_target = *point_map_;
+  }
+
   pcl::NormalDistributionsTransform<pcl::PointXYZI, pcl::PointXYZI> ndt;
   ndt.setTransformationEpsilon(1e-4);
   ndt.setEuclideanFitnessEpsilon(1e-4);
   ndt.setMaximumIterations(25);
-  ndt.setResolution(1.0);
-  ndt.setInputTarget(point_map_);
+  ndt.setResolution(g_reloc_ndt_resolution);
+  ndt.setInputTarget(reloc_target);
 
   pcl::IterativeClosestPoint<pcl::PointXYZI, pcl::PointXYZI> icp;
-  icp.setMaxCorrespondenceDistance(4.0);
+  icp.setMaxCorrespondenceDistance(g_reloc_icp_max_corr_dist);
   icp.setMaximumIterations(40);
   icp.setTransformationEpsilon(1e-4);
   icp.setEuclideanFitnessEpsilon(1e-4);
   icp.setRANSACIterations(0);
-  icp.setInputTarget(point_map_);
+  icp.setInputTarget(reloc_target);
 
   ndt.setInputSource(tmp_src);
   icp.setInputSource(tmp_src);
@@ -233,6 +274,31 @@ bool SuperLIOReLoc::kf_init(){
     return false;
   } else{
     init_guess_T = icp.getFinalTransformation().cast<scalar>();
+
+    const double final_yaw = std::atan2(
+      static_cast<double>(init_guess_T(1, 0)),
+      static_cast<double>(init_guess_T(0, 0)));
+    const double init_yaw = g_init_yaw * M_PI / 180.0;
+    double yaw_delta = final_yaw - init_yaw;
+    while (yaw_delta > M_PI) {
+      yaw_delta -= 2.0 * M_PI;
+    }
+    while (yaw_delta < -M_PI) {
+      yaw_delta += 2.0 * M_PI;
+    }
+    const double yaw_delta_deg = std::abs(yaw_delta) * 180.0 / M_PI;
+    if (g_reloc_max_yaw_delta_deg > 0.0 && yaw_delta_deg > g_reloc_max_yaw_delta_deg) {
+      imu_cout = 0;
+      init_frame_count = 0;
+      init_obs_data_->clear();
+      mean_gyro = V3::Zero();
+      mean_acce = V3::Zero();
+      LOG(INFO) << RED
+                << " ---> Global ICP rejected by yaw limit. yaw_delta=" << yaw_delta_deg
+                << " deg > limit=" << g_reloc_max_yaw_delta_deg << " deg." << RESET;
+      return false;
+    }
+
     LOG(INFO) << GREEN << " ---> Global ICP Converged Succeed! FitnessScore: " << icp.getFitnessScore() << RESET;
   }
 
@@ -257,11 +323,9 @@ bool SuperLIOReLoc::kf_init(){
   sys_init_pose_ = kf_->GetSE3();
 
   {
-    point_map_->clear();
-    point_map_.reset(new PointCloudType());
-    init_obs_data_->clear();
-    init_obs_data_ = nullptr;
-    data_wrapper_->set_initial_data(re_init_pose_, flg_get_init_guess_, true);
+    if (init_obs_data_) {
+      init_obs_data_->clear();
+    }
   }
 
   return true;
@@ -270,10 +334,12 @@ bool SuperLIOReLoc::kf_init(){
 
 void SuperLIOReLoc::UpdateMap() {
   if(g_update_map){
-    static int __update_delay = 100;
-    if(__update_delay > 0){
-      __update_delay--;
-      std::cout << "Update map Delay: " << 100 - __update_delay << " %" << std::endl;
+    static int update_delay_frames = (g_update_map_delay_frames > 0) ? g_update_map_delay_frames : 0;
+    if(update_delay_frames > 0){
+      update_delay_frames--;
+      const int total_frames = (g_update_map_delay_frames > 0) ? g_update_map_delay_frames : 1;
+      const int progress = ((total_frames - update_delay_frames) * 100) / total_frames;
+      std::cout << "Update map Delay: " << progress << " %" << std::endl;
       return;
     }
   }

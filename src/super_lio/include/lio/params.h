@@ -97,7 +97,12 @@ namespace LI2Sup{
 
   /// for relocation
   extern bool g_update_map;
+  extern int g_update_map_delay_frames;
   extern double g_init_px, g_init_py, g_init_pz, g_init_roll, g_init_pitch, g_init_yaw;
+  extern double g_reloc_search_radius_xy;
+  extern double g_reloc_ndt_resolution;
+  extern double g_reloc_icp_max_corr_dist;
+  extern double g_reloc_max_yaw_delta_deg;
 
 }
 

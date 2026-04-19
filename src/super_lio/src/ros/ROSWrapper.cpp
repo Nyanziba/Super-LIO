@@ -190,6 +190,21 @@ void LoadParamFromRos(rclcpp::Node& node)
   node.declare_parameter<bool>("lio.relocation.update_map", false);
   node.get_parameter("lio.relocation.update_map", g_update_map);
 
+  node.declare_parameter<int>("lio.relocation.update_map_delay_frames", 100);
+  node.get_parameter("lio.relocation.update_map_delay_frames", g_update_map_delay_frames);
+
+  node.declare_parameter<double>("lio.relocation.search_radius_xy", 0.0);
+  node.get_parameter("lio.relocation.search_radius_xy", g_reloc_search_radius_xy);
+
+  node.declare_parameter<double>("lio.relocation.ndt_resolution", 1.0);
+  node.get_parameter("lio.relocation.ndt_resolution", g_reloc_ndt_resolution);
+
+  node.declare_parameter<double>("lio.relocation.icp_max_corr_dist", 4.0);
+  node.get_parameter("lio.relocation.icp_max_corr_dist", g_reloc_icp_max_corr_dist);
+
+  node.declare_parameter<double>("lio.relocation.max_yaw_delta_deg", 180.0);
+  node.get_parameter("lio.relocation.max_yaw_delta_deg", g_reloc_max_yaw_delta_deg);
+
   std::vector<double> init_pose;
   node.declare_parameter<std::vector<double>>(
       "lio.relocation.init_pose", std::vector<double>(6, 0.0));
