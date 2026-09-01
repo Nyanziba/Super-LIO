@@ -24,7 +24,11 @@
 #include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
+// livox_ros_driver2 はオプション依存。無い環境では lidar_type=LIVOX_PC2
+// (PointCloud2 経路) を使う。CMake が見つけたときだけ定義される。
+#ifdef SUPER_LIO_HAVE_LIVOX_DRIVER2
 #include <livox_ros_driver2/msg/custom_msg.hpp>
+#endif
 #include <pcl_conversions/pcl_conversions.h>
 
 /// msgs
@@ -46,7 +50,9 @@ namespace LI2Sup{
 
 void LoadParamFromRos(rclcpp::Node& node);
 
+#ifdef SUPER_LIO_HAVE_LIVOX_DRIVER2
 void livox2pcl(const livox_ros_driver2::msg::CustomMsg::SharedPtr& msg, BASIC::CloudPtr& point_cloud);
+#endif
 
 class ROSWrapper : public rclcpp::Node {
 public:
@@ -86,7 +92,9 @@ public:
 
 private:
   void imuHandler(const sensor_msgs::msg::Imu::SharedPtr msg);
+#ifdef SUPER_LIO_HAVE_LIVOX_DRIVER2
   void livoxHandler(const livox_ros_driver2::msg::CustomMsg::SharedPtr msg);
+#endif
   void stdMsgHandler(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
 
   void setupParams();
@@ -95,7 +103,9 @@ private:
 private:
   rclcpp::CallbackGroup::SharedPtr cb_sensor_;
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr sub_imu_;
+#ifdef SUPER_LIO_HAVE_LIVOX_DRIVER2
   rclcpp::Subscription<livox_ros_driver2::msg::CustomMsg>::SharedPtr sub_lidar_;
+#endif
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sub_lidar_std_;
 
   std::deque<IMUData>   imu_buffer_;

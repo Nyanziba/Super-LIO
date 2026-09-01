@@ -1,5 +1,7 @@
 
 #include "ros/ROSWrapper.h"
+
+#include <stdexcept>
 #include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
 
 #include <filesystem>
@@ -222,6 +224,7 @@ void LoadParamFromRos(rclcpp::Node& node)
 }
 
 
+#ifdef SUPER_LIO_HAVE_LIVOX_DRIVER2
 void livox2pcl(const livox_ros_driver2::msg::CustomMsg::SharedPtr& msg, CloudPtr& point_cloud){
   point_cloud->clear();
   CloudPtr cloud_full(new PointCloudType());
@@ -263,6 +266,7 @@ void livox2pcl(const livox_ros_driver2::msg::CustomMsg::SharedPtr& msg, CloudPtr
     }
   }
 }
+#endif  // SUPER_LIO_HAVE_LIVOX_DRIVER2
 
 
 std::string lidarTypeToString(int type) {
@@ -334,12 +338,18 @@ void ROSWrapper::setupIO(){
       sub_opt);
 
   if (g_lidar_type == LID_TYPE::LIVOX) {
+#ifdef SUPER_LIO_HAVE_LIVOX_DRIVER2
     sub_lidar_ =
         this->create_subscription<livox_ros_driver2::msg::CustomMsg>(
             g_lidar_topic,
             lidar_qos,
             std::bind(&ROSWrapper::livoxHandler, this, std::placeholders::_1),
             sub_opt);
+#else
+    throw std::runtime_error(
+        "super_lio was built without livox_ros_driver2. Use "
+        "lio.sensor.lidar_type: 8 (LIVOX_PC2, PointCloud2 input) instead.");
+#endif
   } else {
     sub_lidar_std_ =
         this->create_subscription<sensor_msgs::msg::PointCloud2>(
@@ -443,6 +453,7 @@ void ROSWrapper::imuHandler(const sensor_msgs::msg::Imu::SharedPtr msg){
 }
 
 
+#ifdef SUPER_LIO_HAVE_LIVOX_DRIVER2
 void ROSWrapper::livoxHandler(const livox_ros_driver2::msg::CustomMsg::SharedPtr msg){
   if(msg->point_num < 10) return;
   LidarData lidar_data;
@@ -466,6 +477,7 @@ void ROSWrapper::livoxHandler(const livox_ros_driver2::msg::CustomMsg::SharedPtr
   lidar_data.end_time   = lidar_data.start_time + offset_time;
   lidar_buffer_.push_back(lidar_data);
 }
+#endif  // SUPER_LIO_HAVE_LIVOX_DRIVER2
 
 
 void ROSWrapper::stdMsgHandler(const sensor_msgs::msg::PointCloud2::SharedPtr msg){
@@ -542,6 +554,27 @@ void ROSWrapper::stdMsgHandler(const sensor_msgs::msg::PointCloud2::SharedPtr ms
       auto& pt = pl_orig.points[i];
       if (!validPoint(pt.x, pt.y, pt.z)) continue;
       offset_time = pt.t * 1e-9;
+      lidar_data.pc->emplace_back(
+          pt.x, pt.y, pt.z, pt.intensity, offset_time);
+    }
+    lidar_data.end_time = lidar_data.start_time + offset_time;
+    break;
+  }
+  case LID_TYPE::LIVOX_PC2:
+  {
+    // texnitis_livox_driver の PointCloud2。timestamp は LiDAR 時計の絶対 ns なので
+    // 先頭点との差だけを使い、フレーム時刻は header.stamp (ROS 時計) に合わせる。
+    pcl::PointCloud<texnitis_ros::Point> pl_orig;
+    pcl::fromROSMsg(*msg, pl_orig);
+    if (pl_orig.empty()) return;
+    lidar_data.pc->reserve(pl_orig.size() / g_filter_rate + 1);
+    lidar_data.start_time = stampToSec(msg->header.stamp);
+    const double time_base_ns = pl_orig.points.front().timestamp;
+
+    for(std::size_t i = 0; i < pl_orig.size(); i += g_filter_rate){
+      auto& pt = pl_orig.points[i];
+      if (!validPoint(pt.x, pt.y, pt.z)) continue;
+      offset_time = (pt.timestamp - time_base_ns) * 1e-9;
       lidar_data.pc->emplace_back(
           pt.x, pt.y, pt.z, pt.intensity, offset_time);
     }

@@ -20,17 +20,22 @@ enum LID_TYPE
   VELO32 = 4,
   VEL_NCLT = 5,
   LS16 = 6,
-  OUSTER = 7
+  OUSTER = 7,
+  // sensor_msgs/PointCloud2 with livox_ros_driver2-compatible fields
+  // (x y z intensity tag line timestamp[ns]); texnitis_livox_driver output.
+  LIVOX_PC2 = 8
 };
 
-static const std::array<std::string, 7> LID_TYPE_NAMES = {
+static const std::array<std::string, 9> LID_TYPE_NAMES = {
   "INVALID",
   "LIVOX",
   "HESAI16",
   "VELO16",
   "VELO32",
   "VEL_NCLT",
-  "LS16"
+  "LS16",
+  "OUSTER",
+  "LIVOX_PC2"
 };
 
 

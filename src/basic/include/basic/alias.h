@@ -89,6 +89,29 @@
                                    )
  
  
+// texnitis_livox_driver (livox_ros_driver2 互換 PointCloud2) の点レイアウト。
+// fields: x y z intensity (f32), tag line (u8), timestamp (f64, LiDAR 時刻 ns)。
+namespace texnitis_ros {
+struct EIGEN_ALIGN16 Point {
+  PCL_ADD_POINT4D
+  float intensity;
+  std::uint8_t tag;
+  std::uint8_t line;
+  double timestamp;
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+};
+}  // namespace texnitis_ros
+
+POINT_CLOUD_REGISTER_POINT_STRUCT(texnitis_ros::Point,
+  (float, x, x)
+  (float, y, y)
+  (float, z, z)
+  (float, intensity, intensity)
+  (std::uint8_t, tag, tag)
+  (std::uint8_t, line, line)
+  (double, timestamp, timestamp)
+)
+
 namespace LI2Sup {
 struct EIGEN_ALIGN16 PointXTZIT {
   PCL_ADD_POINT4D

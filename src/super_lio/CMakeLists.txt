@@ -22,7 +22,14 @@ find_package(sensor_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(pcl_ros REQUIRED)
-find_package(livox_ros_driver2 REQUIRED)
+# livox_ros_driver2 はオプション。無ければ PointCloud2 入力 (LIVOX_PC2) のみ。
+find_package(livox_ros_driver2 QUIET)
+if(livox_ros_driver2_FOUND)
+  add_definitions(-DSUPER_LIO_HAVE_LIVOX_DRIVER2)
+  set(OPTIONAL_LIVOX_DEP livox_ros_driver2)
+else()
+  set(OPTIONAL_LIVOX_DEP)
+endif()
 
 find_package(Eigen3 REQUIRED NO_MODULE)
 find_package(PCL REQUIRED)
@@ -63,7 +70,7 @@ ament_target_dependencies(lio PUBLIC
   visualization_msgs
   nav_msgs
   pcl_ros
-  livox_ros_driver2
+  ${OPTIONAL_LIVOX_DEP}
   basic
   rosidl_default_runtime
 )
