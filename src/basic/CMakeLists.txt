@@ -12,7 +12,7 @@ set(CMAKE_C_FLAGS_RELEASE "-O3 -Wall -fPIC")
 
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(Glog REQUIRED)
+find_package(glog CONFIG REQUIRED)
 find_package(Eigen3 REQUIRED NO_MODULE)
 find_package(PCL REQUIRED)
 
@@ -44,7 +44,7 @@ target_link_libraries(${PROJECT_NAME}
   Eigen3::Eigen
   ${PCL_LIBRARIES}
   gflags
-  glog
+  glog::glog
   pthread
 )
 

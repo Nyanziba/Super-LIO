@@ -33,7 +33,7 @@ endif()
 
 find_package(Eigen3 REQUIRED NO_MODULE)
 find_package(PCL REQUIRED)
-find_package(Glog REQUIRED)
+find_package(glog CONFIG REQUIRED)
 find_package(basic REQUIRED)
 
 
@@ -78,7 +78,7 @@ ament_target_dependencies(lio PUBLIC
 target_link_libraries(lio PUBLIC
   Eigen3::Eigen
   ${PCL_LIBRARIES}
-  glog
+  glog::glog
   pthread
   ${cpp_typesupport_target}
 )
