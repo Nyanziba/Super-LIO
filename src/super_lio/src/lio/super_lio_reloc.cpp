@@ -333,15 +333,16 @@ bool SuperLIOReLoc::kf_init(){
 
 
 void SuperLIOReLoc::UpdateMap() {
-  if(g_update_map){
-    static int update_delay_frames = (g_update_map_delay_frames > 0) ? g_update_map_delay_frames : 0;
-    if(update_delay_frames > 0){
-      update_delay_frames--;
-      const int total_frames = (g_update_map_delay_frames > 0) ? g_update_map_delay_frames : 1;
-      const int progress = ((total_frames - update_delay_frames) * 100) / total_frames;
-      std::cout << "Update map Delay: " << progress << " %" << std::endl;
-      return;
-    }
+  if(!g_update_map) return;
+
+  // fork: 遅延フレーム数をパラメータ化 (upstream は固定 100)。
+  static int update_delay_frames = (g_update_map_delay_frames > 0) ? g_update_map_delay_frames : 0;
+  if(update_delay_frames > 0){
+    update_delay_frames--;
+    const int total_frames = (g_update_map_delay_frames > 0) ? g_update_map_delay_frames : 1;
+    const int progress = ((total_frames - update_delay_frames) * 100) / total_frames;
+    std::cout << "Update map Delay: " << progress << " %" << std::endl;
+    return;
   }
 
   const size_t ptsize = ds_undistort_->size();
